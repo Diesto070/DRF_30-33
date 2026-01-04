@@ -1,0 +1,32 @@
+[
+  {
+    "model": "users.user",
+    "pk": 1,
+    "fields": {
+      "password": "pbkdf2_sha256$60",
+      "is_superuser": false,
+      "first_name": "Иван",
+      "last_name": "Иванов",
+      "is_active": true,
+      "date_joined": "2024-01-15T10:30:00Z",
+      "email": "ivan@example.com",
+      "phone": "+79991234567",
+      "city": "Москва"
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 2,
+    "fields": {
+      "password": "0$AbCdEfGhI",
+      "is_superuser": false,
+      "first_name": "Мария",
+      "last_name": "Петрова",
+      "is_active": true,
+      "date_joined": "2024-01-16T14:45:00Z",
+      "email": "maria@example.com",
+      "phone": "+79992345678",
+      "city": "Санкт-Петербург"
+    }
+  }
+]

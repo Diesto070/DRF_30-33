@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from materials.models import Course, Lesson
+
 
 class User(AbstractUser):
     """Кастомная модель пользователя с email для авторизации"""
@@ -36,3 +38,49 @@ class User(AbstractUser):
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
+
+
+class Payments(models.Model):
+    """Модель платежи"""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name="Пользователь",
+        help_text="Выберите пользователя",
+    )
+    date_payment = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Дата платежа",
+    )
+    course_paid = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        verbose_name="Оплаченный курс",
+        null=True,
+        blank=True,
+    )
+    lesson_paid = models.ForeignKey(
+        Lesson,
+        on_delete=models.CASCADE,
+        verbose_name="Оплаченный урок",
+        null=True,
+        blank=True,
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Сумма оплаты",
+        help_text="Укажите сумму оплаты",
+    )
+    method_payment = models.CharField(
+        max_length=10,
+        choices=[("cash", "Наличные"), ("transfer", "Перевод на счет")],
+        verbose_name="Способ оплаты",
+        help_text="Выберите способ оплаты",
+    )
+
+    class Meta:
+        verbose_name = "Платеж"
+        verbose_name_plural = "Платежи"
+        ordering = ["-date_payment"]  # новые платежи первыми
