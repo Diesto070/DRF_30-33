@@ -9,7 +9,7 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 
 DEBUG = True
@@ -24,7 +24,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
     "rest_framework",
+    "django_filters",
     "users",
     "materials",
 ]
@@ -58,6 +60,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
+}
 
 DATABASES = {
     "default": {
