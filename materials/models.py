@@ -32,10 +32,14 @@ class Course(models.Model):
         verbose_name="Владелец курса",
         help_text="Укажите владельца курса",
     )
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Курс"
         verbose_name_plural = "Курсы"
+
+    def __str__(self):
+        return self.name
 
 
 class Lesson(models.Model):
@@ -83,6 +87,9 @@ class Lesson(models.Model):
         verbose_name = "Урок"
         verbose_name_plural = "Уроки"
 
+    def __str__(self):
+        return self.name
+
 
 class Subscription(models.Model):
     """Модель подписки на курс"""
@@ -97,6 +104,11 @@ class Subscription(models.Model):
         on_delete=models.CASCADE,
         verbose_name="Курс",
         help_text="Укажите курс"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Активная подписка",
+        help_text="Отметка об активности подписки"
     )
     created_at = models.DateTimeField(
         auto_now_add=True,
