@@ -13,6 +13,7 @@ from rest_framework.viewsets import ModelViewSet
 from materials.models import Course, Lesson, Subscription
 from materials.paginators import CourseLessonPagination
 from materials.serializers import CourseDetailSerializer, CourseSerializer, LessonSerializer, SubscriptionSerializer
+from materials.tasks import send_email_about_update_the_course_materials
 from users.permissions import IsModer, IsOwner
 
 
@@ -45,6 +46,23 @@ class CourseViewSet(ModelViewSet):
     def perform_create(self, serializer: serializers.Serializer) -> None:
         """Автоматически устанавливает текущего пользователя как владельца создаваемого объекта."""
         serializer.save(owner=self.request.user)
+
+    def perform_update(self, serializer):
+        """Обновление курса с уведомлением подписчиков."""
+        super().perform_update(serializer)      # 1. Сохраняем обновление курса
+        course = serializer.instance            # 2. Получаем обновленный курс
+
+        # Получаем всех подписчиков курса
+        subscribers = Subscription.objects.filter(course=course)
+
+        # Отправляем письма всем подписчикам
+        for subscription in subscribers:
+            send_email_about_update_the_course_materials.delay(
+                subscription.user.email,    # Email каждого подписчика
+                "Курс обновлен",            # Тема письма
+                f"Материалы курса '{course.name}' обновлены, проверь свои подписки!"
+                # Текст
+            )
 
 
 class LessonCreateApiView(CreateAPIView):
@@ -178,5 +196,9 @@ class SubscriptionAPIView(APIView):
             Subscription.objects.create(user=user, course=course_item)
             message = 'подписка добавлена'
 
+            # Вызов задачи Celery для отправки приветственного письма
+            # send_email_about_update_the_course_materials.delay(
+            #             user.email, "Курс обновлен", "Материалы курса обновлены, проверь свои подписки!"
+            #         )
         # Возвращаем ответ в API
         return Response({"message": message})
