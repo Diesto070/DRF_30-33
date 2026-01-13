@@ -1,5 +1,7 @@
 from typing import Type
 
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import serializers, status
 from rest_framework.generics import (CreateAPIView, DestroyAPIView, ListAPIView, RetrieveAPIView, UpdateAPIView,
                                      get_object_or_404)
@@ -97,6 +99,58 @@ class SubscriptionAPIView(APIView):
     queryset = Subscription.objects.all()
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_description="Подписывает или отписывает пользователя от курса",
+        tags=['Подписки'],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['course_id'],
+            properties={
+                'course_id': openapi.Schema(
+                    type=openapi.TYPE_INTEGER,
+                    description='ID курса для подписки/отписки',
+                    example=1  # Добавить пример
+                )
+            }
+        ),
+        responses={
+            200: openapi.Response(
+                description='Успешно',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'message': openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            enum=['подписка добавлена', 'подписка удалена'],
+                            description='Результат операции'
+                        )
+                    }
+                ),
+                examples={
+                    'application/json': [
+                        {'message': 'подписка добавлена'},
+                        {'message': 'подписка удалена'}
+                    ]
+                }
+            ),
+            400: openapi.Response(
+                description='Ошибка валидации',
+                examples={
+                    'application/json': {
+                        'error': 'course_id обязателен'
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description='Курс не найден',
+                examples={
+                    'application/json': {
+                        'detail': 'Курс не найден'
+                    }
+                }
+            )
+        }
+    )
     def post(self, request, *args, **kwargs):
         """Подписывает пользователя на курс."""
         user = request.user

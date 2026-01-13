@@ -1,6 +1,6 @@
 from django.db.models import QuerySet
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
+from rest_framework import filters, serializers
 from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.viewsets import ModelViewSet
@@ -8,6 +8,7 @@ from rest_framework.viewsets import ModelViewSet
 from users.models import Payments, User
 from users.serializers import (PaymentsSerializer, UserHistoryPaymentsSerializer, UserRegistrationSerializer,
                                UserSerializer)
+from users.services import create_stripe_price, create_stripe_product, create_stripe_sessions
 
 
 class PaymentViewSet(ModelViewSet):
@@ -23,6 +24,53 @@ class PaymentViewSet(ModelViewSet):
     ordering_fields = ['date_payment']
     # Сортировка по умолчанию (новые первыми)
     ordering = ['-date_payment']
+
+
+class PaymentsCreateAPIView(CreateAPIView):
+
+    """ API View для создания платежей через Stripe.
+
+    Этот View обрабатывает создание платежей для курсов или уроков."""
+    serializer_class = PaymentsSerializer
+    queryset = Payments.objects.all()
+
+    def perform_create(self, serializer):
+        """Создает платеж и сессию оплаты в Stripe.
+
+        Логика работы:
+        1. Сохраняет платеж в базе данных с привязкой к текущему пользователю
+        2. Определяет оплачиваемый курс или урок
+        3. Создает продукт в Stripe на основе названия курса/урока
+        4. Создает цену в Stripe в рублях (конвертирует рубли в копейки)
+        5. Создает сессию оплаты в Stripe и получает ссылку для оплаты
+        6. Сохраняет ID сессии и ссылку в объекте платежа"""
+
+        # Создаем платеж в базе
+        payment = serializer.save(user=self.request.user)
+
+        # Получаем курс или урок для оплаты
+        course = payment.course_paid
+        lesson = payment.lesson_paid
+        # Определяем, что оплачивается: курс или урок
+        if course:
+            product_name = course.name
+        elif lesson:
+            product_name = lesson.name
+        else:
+            # Если ни курс, ни урок не указаны - выбрасываем ошибку
+            raise serializers.ValidationError(
+                "Необходимо указать курс или урок для оплаты"
+            )
+        # Создаем продукт в Stripe
+        product = create_stripe_product(product_name)
+
+        # Создаем цену в Stripe
+        price = create_stripe_price(payment.amount, product.id)
+        # Создаем сессию оплаты
+        session_id, payment_link = create_stripe_sessions(price)
+        payment.session_id = session_id
+        payment.link = payment_link
+        payment.save()
 
 
 class UserViewSet(ModelViewSet):
