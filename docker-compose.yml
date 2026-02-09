@@ -1,22 +1,32 @@
 services:
-  postgres:
+  nginx:
+    build:
+      context: ./nginx
+    container_name: nginx_proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    depends_on:
+      - web
+
+  db:
     image: postgres:16.0
-    env_file:
-      - .env
-    environment:
-      POSTGRES_DB: ${NAME:-education_platform}
-      POSTGRES_USER: ${USER:-postgres}
-      POSTGRES_PASSWORD: ${PASSWORD:-postgres}
+    container_name: postgres_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - ./.env
     ports:
       - "5432:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${USER}" ]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
 
   redis:
     image: redis:7-alpine
@@ -25,6 +35,8 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    env_file:
+      - ./.env
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -32,9 +44,12 @@ services:
       retries: 5
 
   web:
-    build: .
-    container_name: django_app_new
-    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    build:
+      context: .
+      dockerfile: Dockerfile
+#    image: alexandraandryshchenko/drf-online-platform:965349cbfaff1dbdaa20d10d60f372dea063aa9d
+    container_name: drf-online-platform  # или оставить django_app_new
+    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - static_volume:/app/static/
       - media_volume:/app/media/
@@ -42,25 +57,27 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - ./.env
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redis:
-        condition: service_healthy
+        condition: service_started
 
   celery:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: education_platform_celery
     command: celery -A config worker --loglevel=info
     volumes:
       - media_volume:/app/media/
       - .:/app
     env_file:
-      - .env
+      - ./.env
     depends_on:
       - redis
-      - postgres
+      - db
       - web  # Ждем backend для применения миграций
 
   celery-beat:
@@ -73,11 +90,14 @@ services:
       - media_volume:/app/media/
       - .:/app
     env_file:
-      - .env
+      - ./.env
     depends_on:
       - redis
-      - postgres
+      - db
       - web  # Ждем backend для применения миграций
+
+networks:
+  default:
 
 volumes:
   postgres_data:
