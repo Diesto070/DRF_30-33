@@ -116,29 +116,3 @@ jobs:
         run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/drf-online-platform:${{ github.sha }}
 
   # Отправка Docker-образа на сервер
-  deploy:
-    # деплоим только после успешного Docker-образа
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      # Подключение к серверу. Запускает новую версию из свежего Docker-образа
-      - name: Deploy to Server
-        uses: appleboy/ssh-action@v0.1.10
-        # Параметры подключения
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SSH_USER_SERVER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-         # Остановка существующего контейнера
-         # Удаление контейнера
-         # Запуск нового контейнера
-          script: |
-#           # Используем .env файл из правильной директории проекта
-#           ENV_FILE="/var/www/drf-online-platform/.env"
-
-             docker stop drf-online-platform || true
-             docker rm -f drf-online-platform || true
-             docker run -d --name drf-online-platform -p 80:8000 \
-              --env-file ~/myproject/.env \
-              ${{ secrets.DOCKER_HUB_USERNAME }}/drf-online-platform:${{ github.sha }}
