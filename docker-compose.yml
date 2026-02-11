@@ -47,7 +47,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-#    image: alexandraandryshchenko/drf-online-platform:965349cbfaff1dbdaa20d10d60f372dea063aa9d
+#    image: diesto070/drf-online-platform:26048771c36d1f9f4ad091f7bfdb27756d45abf4c0970c6f887c2862579d3eac
     container_name: drf-online-platform  # или оставить django_app_new
     command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
