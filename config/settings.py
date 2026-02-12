@@ -27,7 +27,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "web",
     "nginx",
-    "89.169.165.84",
+    "158.160.85.129",
 ]
 
 AUTH_USER_MODEL = "users.User"
