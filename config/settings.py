@@ -22,7 +22,13 @@ else:
     DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # ALLOWED_HOSTS = ['*']
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'web', 'nginx']
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "web",
+    "nginx",
+    "89.169.165.84",
+]
 
 AUTH_USER_MODEL = "users.User"
 
@@ -122,10 +128,10 @@ USE_TZ = True
 
 # Настройка статических файлов
 STATIC_URL = "static/"
-# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-# STATICFILES_DIRS = [
-#     os.path.join(BASE_DIR, 'static'),
-# ]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 # Настройка медиафайлов
 MEDIA_URL = "/media/"

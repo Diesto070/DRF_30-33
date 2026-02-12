@@ -116,3 +116,33 @@ jobs:
         run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/drf-online-platform:${{ github.sha }}
 
   # Отправка Docker-образа на сервер
+  deploy: # деплоим только после успешного Docker-образа
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps: # Подключение к серверу. Запускает новую версию из свежего Docker-образа
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v0.1.10
+        # Параметры подключения
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SSH_USER_SERVER }}
+          key: ${{ secrets.SSH_KEY_PRIVATE }}
+          script: |
+            # 1. Переходим в папку проекта
+            cd /home/diesto070/DRF/DRF_30-33
+
+            # 2. Получаем последние изменения кода
+            git pull origin feature/hw_35.2
+
+            # 3. Получаем новый образ
+            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
+
+            # 4. Перезапускаем контейнеры с новым образом
+            docker compose down
+            docker compose up -d --build
+
+            # 5. Проверяем
+            sleep 10
+            docker compose ps
+            echo "✅ Деплой завершен"
