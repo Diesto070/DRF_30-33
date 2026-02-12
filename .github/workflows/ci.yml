@@ -34,30 +34,30 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
 
-#    services:
-#      postgres:
-#        image: postgres:15
-#        env:
-#          POSTGRES_USER: postgres
-#          POSTGRES_PASSWORD: 951321
-#          POSTGRES_DB: test_db
-#        options: >-
-#          --health-cmd pg_isready
-#          --health-interval 10s
-#          --health-timeout 5s
-#          --health-retries 5
-#        ports:
-#          - 5432:5432
-#
-#      redis:
-#        image: redis:7-alpine
-#        ports:
-#          - 6379:6379
-#        options: >-
-#          --health-cmd "redis-cli ping"
-#          --health-interval 10s
-#          --health-timeout 5s
-#          --health-retries 5
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 951321
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
     # Получаем код из репозитория
@@ -78,14 +78,14 @@ jobs:
         poetry config virtualenvs.create false
         poetry install --no-root
 
-#    # Устанавливаем зависимости для тестирования
-#    - name: Set up environment variables for tests
-#      env:
-#        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-#      run: |
-#        echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> $GITHUB_ENV
-#        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db" >> $GITHUB_ENV
-#        echo "DEBUG=False" >> $GITHUB_ENV
+   # Устанавливаем зависимости для тестирования
+    - name: Set up environment variables for tests
+      env:
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      run: |
+        echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> $GITHUB_ENV
+        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db" >> $GITHUB_ENV
+        echo "DEBUG=False" >> $GITHUB_ENV
 
     # Запускаем тесты
     - name: Run tests
