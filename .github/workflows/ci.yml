@@ -1,0 +1,148 @@
+name: Django CI/CD Pipeline
+
+on: [push, pull_request]
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      # Получаем код из репозитория
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      # Устанавливаем Python нужной версии
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # Устанавливаем зависимости
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+
+      # Запускаем проверку кода через flake8
+      - name: Run flake8
+        run: flake8 .
+
+  # Запуск тестов (после успешного прохождения линтеров)
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 951321
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    # Получаем код из репозитория
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    # Устанавливаем Python нужной версии
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    # Устанавливаем зависимости проекта
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry config virtualenvs.create false
+        poetry install --no-root
+
+   # Устанавливаем зависимости для тестирования
+    - name: Set up environment variables for tests
+      env:
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      run: |
+        echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> $GITHUB_ENV
+        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db" >> $GITHUB_ENV
+        echo "DEBUG=False" >> $GITHUB_ENV
+
+    # Запускаем тесты
+    - name: Run tests
+      run: |
+        python manage.py test
+
+  # Сборка Docker-образа. Она  будет собираться только после успешного прохождения тестов
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      # Получаем код из репозитория
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      # Авторизуемся в Docker Hub используя секреты
+      - name: Log in to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+
+      # Собираем Docker-образ с тегом на основе последнего коммита
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/drf-online-platform:${{ github.sha }} .
+
+      # Отправляем собранный Docker-образ в Docker Hub
+      - name: Push Docker image to Docker Hub
+        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/drf-online-platform:${{ github.sha }}
+
+  # Отправка Docker-образа на сервер
+  deploy: # деплоим только после успешного Docker-образа
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps: # Подключение к серверу. Запускает новую версию из свежего Docker-образа
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v0.1.10
+        # Параметры подключения
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SSH_USER_SERVER }}
+          key: ${{ secrets.SSH_KEY_PRIVATE }}
+          script: |
+            # 1. Переходим в папку проекта
+            cd /home/diesto070/DRF/DRF_30-33
+
+            # 2. Получаем последние изменения кода
+            git pull origin feature/hw_35.2
+
+            # 3. Получаем новый образ
+            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
+
+            # 4. Перезапускаем контейнеры с новым образом
+            docker compose down
+            docker compose up -d --build
+
+            # 5. Проверяем
+            sleep 10
+            docker compose ps
+            echo "✅ Деплой завершен"
